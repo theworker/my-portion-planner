@@ -21,7 +21,10 @@
         <h1>My Portion Planner</h1>
         <p class="sub">141 lb starting weight • weight-loss plan</p>
       </div>
-      <button id="installBtn" class="ghost hidden">Install App</button>
+      <div class="top-actions">
+        <select id="profileSelect" class="profile-select" aria-label="Choose profile"></select>
+        <button id="installBtn" class="ghost hidden">Install App</button>
+      </div>
     </header>
 
     <main>
@@ -61,11 +64,18 @@
         <div class="card">
           <div class="section-head">
             <div>
-              <h2>Grocery List</h2>
-              <p>Tap items as you shop.</p>
+              <h2>Weekly Grocery List</h2>
+              <p>This list covers all 7 days and is shared by both profiles.</p>
             </div>
             <button id="clearGroceries" class="ghost">Clear</button>
           </div>
+
+          <div class="people-picker" aria-label="Number of people">
+            <button id="onePersonBtn" class="people-btn active">1 Person</button>
+            <button id="twoPeopleBtn" class="people-btn">2 People</button>
+          </div>
+
+          <p id="grocerySummary" class="muted grocery-summary"></p>
         </div>
         <div id="groceryList"></div>
       </section>
@@ -96,6 +106,22 @@
       </section>
 
       <section id="settings" class="page">
+        <div class="card">
+          <h2>Profiles</h2>
+          <p class="muted">Each profile keeps separate daily portions, weight history, goal weight, and meal-plan day.</p>
+          <div class="profile-edit-grid">
+            <label>
+              <span>Profile 1 name</span>
+              <input id="profile1Name" type="text" maxlength="24" />
+            </label>
+            <label>
+              <span>Profile 2 name</span>
+              <input id="profile2Name" type="text" maxlength="24" />
+            </label>
+          </div>
+          <button id="saveProfileNames" class="primary">Save Profile Names</button>
+        </div>
+
         <div class="card">
           <h2>Your Plan</h2>
           <div class="settings-list">
