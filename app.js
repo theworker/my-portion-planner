@@ -106,7 +106,135 @@ const groceries = {
 };
 
 
-const key = "myPortionPlanner_v5";
+
+const proteinSwapCatalog = {
+  "eggs": [
+    "Eggs",
+    "Plain Greek yogurt",
+    "Cottage cheese",
+    "Chicken breast",
+    "Turkey breast",
+    "Tofu",
+    "Tempeh"
+  ],
+  "greek yogurt": [
+    "Plain Greek yogurt",
+    "Cottage cheese",
+    "Eggs",
+    "Chicken breast",
+    "Turkey breast",
+    "Tofu",
+    "Tempeh"
+  ],
+  "cottage cheese": [
+    "Cottage cheese",
+    "Plain Greek yogurt",
+    "Eggs",
+    "Chicken breast",
+    "Turkey breast",
+    "Tofu",
+    "Tempeh"
+  ],
+  "chicken": [
+    "Chicken breast",
+    "Turkey breast",
+    "White fish",
+    "Shrimp",
+    "Tuna",
+    "Lean beef",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ],
+  "turkey": [
+    "Turkey breast",
+    "Chicken breast",
+    "White fish",
+    "Shrimp",
+    "Tuna",
+    "Lean beef",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ],
+  "salmon": [
+    "Salmon",
+    "Chicken breast",
+    "Turkey breast",
+    "White fish",
+    "Shrimp",
+    "Tuna",
+    "Lean beef",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ],
+  "tuna": [
+    "Tuna",
+    "Chicken breast",
+    "Turkey breast",
+    "White fish",
+    "Shrimp",
+    "Salmon",
+    "Lean beef",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ],
+  "beef": [
+    "Lean beef",
+    "Chicken breast",
+    "Turkey breast",
+    "White fish",
+    "Shrimp",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ],
+  "steak": [
+    "Lean steak",
+    "Chicken breast",
+    "Turkey breast",
+    "White fish",
+    "Shrimp",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ],
+  "fish": [
+    "White fish",
+    "Chicken breast",
+    "Turkey breast",
+    "Shrimp",
+    "Tuna",
+    "Salmon",
+    "Lean beef",
+    "Pork tenderloin",
+    "Tofu",
+    "Tempeh"
+  ]
+};
+
+function detectProteinSwap(detail){
+  const text = detail.toLowerCase();
+  if(text.includes("salmon")) return {key:"salmon", original:"Salmon"};
+  if(text.includes("tuna")) return {key:"tuna", original:"Tuna"};
+  if(text.includes("steak")) return {key:"steak", original:"Lean steak"};
+  if(text.includes("lean beef") || text.includes("beef")) return {key:"beef", original:"Lean beef"};
+  if(text.includes("white fish")) return {key:"fish", original:"White fish"};
+  if(text.includes("turkey")) return {key:"turkey", original:"Turkey"};
+  if(text.includes("chicken")) return {key:"chicken", original:"Chicken breast"};
+  if(text.includes("cottage cheese")) return {key:"cottage cheese", original:"Cottage cheese"};
+  if(text.includes("greek yogurt")) return {key:"greek yogurt", original:"Plain Greek yogurt"};
+  if(text.includes("egg")) return {key:"eggs", original:"Eggs"};
+  return null;
+}
+
+function swapId(dayNumber, mealIndex){
+  return `${dayNumber}-${mealIndex}`;
+}
+
+const key = "myPortionPlanner_v7";
 
 function freshProfile(name){
   return {
@@ -116,7 +244,8 @@ function freshProfile(name){
     startWeight:null,
     weights:[],
     goal:null,
-    selectedDay:1
+    selectedDay:1,
+    mealSwaps:{}
   };
 }
 
@@ -126,21 +255,23 @@ let state;
 if(stored && stored.profiles){
   state = stored;
 } else {
-  // Migrate from v4, then v3, v2, then v1.
+  const v6 = JSON.parse(localStorage.getItem("myPortionPlanner_v6") || "null");
+  const v5 = JSON.parse(localStorage.getItem("myPortionPlanner_v5") || "null");
   const v4 = JSON.parse(localStorage.getItem("myPortionPlanner_v4") || "null");
   const v3 = JSON.parse(localStorage.getItem("myPortionPlanner_v3") || "null");
   const v2 = JSON.parse(localStorage.getItem("myPortionPlanner_v2") || "null");
   const v1 = JSON.parse(localStorage.getItem("myPortionPlanner_v1") || "null");
 
-  if(v4 && v4.profiles){
+  if(v6 && v6.profiles){
+    state = v6;
+  } else if(v5 && v5.profiles){
+    state = v5;
+  } else if(v4 && v4.profiles){
     state = v4;
   } else if(v3 && v3.profiles){
     state = v3;
   } else if(v2 && v2.profiles){
-    state = {
-      ...v2,
-      groceryPeople: v2.groceryPeople || 1
-    };
+    state = {...v2, groceryPeople:v2.groceryPeople || 1};
   } else {
     const p1 = freshProfile("Me");
     if(v1){
@@ -153,20 +284,17 @@ if(stored && stored.profiles){
     }
     state = {
       activeProfile:"p1",
-      profiles:{
-        p1:p1,
-        p2:freshProfile("Wife")
-      },
+      profiles:{p1:p1,p2:freshProfile("Wife")},
       groceries:v1?.groceries || {},
       groceryPeople:1
     };
   }
 }
 
-// Normalize profile data.
 Object.values(state.profiles).forEach(p=>{
   if(!Array.isArray(p.weights)) p.weights = [];
   if(p.startWeight === undefined) p.startWeight = null;
+  if(!p.mealSwaps) p.mealSwaps = {};
 });
 
 if(!state.groceryPeople) state.groceryPeople = 1;
@@ -278,6 +406,73 @@ document.getElementById("resetToday").onclick=()=>{
   }
 };
 
+
+function replaceProteinInDetail(detail, swap, replacement){
+  if(!replacement) return detail;
+
+  const patterns = {
+    "Salmon": /salmon/ig,
+    "Tuna": /tuna/ig,
+    "Lean steak": /lean steak|steak/ig,
+    "Lean beef": /lean beef|beef/ig,
+    "White fish": /white fish/ig,
+    "Turkey": /turkey/ig,
+    "Chicken breast": /grilled chicken|chicken breast|chicken/ig,
+    "Cottage cheese": /cottage cheese/ig,
+    "Plain Greek yogurt": /greek yogurt/ig,
+    "Eggs": /egg scramble|eggs|egg/ig
+  };
+
+  const rx = patterns[swap.original];
+  return rx ? detail.replace(rx, replacement) : detail;
+}
+
+const proteinShoppingUnitOz = {
+  "Salmon":6,
+  "Chicken breast":6,
+  "Turkey breast":6,
+  "Turkey":6,
+  "White fish":6,
+  "Shrimp":6,
+  "Tuna":5.5,
+  "Lean beef":6,
+  "Lean steak":6,
+  "Pork tenderloin":6,
+  "Tofu":6,
+  "Tempeh":6
+};
+
+function getMealProtein(dayNumber, mealIndex, detail, profileState){
+  const swap = detectProteinSwap(detail);
+  if(!swap) return null;
+  return profileState.mealSwaps?.[swapId(dayNumber, mealIndex)] || swap.original;
+}
+
+function collectProteinMealCounts(profileState){
+  const counts = {};
+  days.forEach(day=>{
+    day.meals.forEach(([name,detail], mealIndex)=>{
+      const p = getMealProtein(day.day, mealIndex, detail, profileState);
+      if(p) counts[p] = (counts[p] || 0) + 1;
+    });
+  });
+  return counts;
+}
+
+function formatProteinQty(name, mealCount){
+  if(mealCount <= 0) return null;
+  if(name === "Eggs") return `${mealCount * 2} eggs`;
+  if(name === "Plain Greek yogurt") return `${mealCount * 6} oz`;
+  if(name === "Cottage cheese") return `${mealCount * 6} oz`;
+
+  const ozEach = proteinShoppingUnitOz[name] || 6;
+  const totalOz = mealCount * ozEach;
+  if(totalOz < 16) return `${Math.round(totalOz)} oz`;
+
+  const lb = totalOz / 16;
+  return lb % 1 === 0 ? `${lb.toFixed(0)} lb` : `${lb.toFixed(1)} lb`;
+}
+
 function renderMeals(){
   const pstate = profile();
   const tabs=document.getElementById("dayTabs");
@@ -299,17 +494,80 @@ function renderMeals(){
   const list=document.getElementById("mealList");
   list.innerHTML=`<div class="card"><h2>${pstate.name}: ${day.title}</h2></div>`;
 
-  day.meals.forEach(([name,detail,counts])=>{
+  day.meals.forEach(([name,detail,counts], mealIndex)=>{
     const div=document.createElement("div");
     div.className="meal-card";
+
     const chips = Object.entries(counts).filter(([,v])=>v>0).map(([k,v])=>{
       const p=PORTIONS.find(x=>x.key===k);
       return `<span class="chip" style="background:${p.color}20;color:${p.color}">${v} ${p.name}</span>`;
     }).join("");
-    div.innerHTML=`<h3>${name}</h3><div class="muted">${detail}</div><div class="chips">${chips}</div>`;
+
+    const swap = detectProteinSwap(detail);
+    const id = swapId(day.day, mealIndex);
+    const selectedSwap = pstate.mealSwaps?.[id] || null;
+
+    let displayedDetail = detail;
+    let swapUI = "";
+
+    if(swap){
+      const options = proteinSwapCatalog[swap.key] || [];
+      const current = selectedSwap || swap.original;
+      displayedDetail = replaceProteinInDetail(detail, swap, selectedSwap);
+
+      swapUI = `
+        <div class="meal-actions">
+          <div class="swap-current">Protein: ${current}</div>
+          <button class="swap-btn" type="button">Swap Food</button>
+        </div>
+        <div class="swap-panel hidden">
+          <label>Choose a replacement. It stays saved until you change it or reset swaps.</label>
+          <select>
+            <option value="">Use original (${swap.original})</option>
+            ${options.map(opt=>`<option value="${opt}" ${selectedSwap===opt ? "selected" : ""}>${opt}</option>`).join("")}
+          </select>
+        </div>`;
+    }
+
+    div.innerHTML=`
+      <h3>${name}</h3>
+      <div class="muted meal-detail">${displayedDetail}</div>
+      <div class="chips">${chips}</div>
+      ${swapUI}`;
+
+    if(swap){
+      const swapBtn = div.querySelector(".swap-btn");
+      const panel = div.querySelector(".swap-panel");
+      const select = div.querySelector(".swap-panel select");
+
+      swapBtn.onclick=()=>panel.classList.toggle("hidden");
+
+      select.onchange=()=>{
+        const value = select.value;
+        if(value){
+          pstate.mealSwaps[id] = value;
+        } else {
+          delete pstate.mealSwaps[id];
+        }
+        save();
+        renderMeals();
+        renderGroceries();
+      };
+    }
+
     list.appendChild(div);
   });
 }
+
+document.getElementById("resetSwaps").onclick=()=>{
+  const pstate = profile();
+  const ok = confirm(`Reset all food swaps for ${pstate.name} back to the original 7-day meal plan?`);
+  if(!ok) return;
+  pstate.mealSwaps = {};
+  save();
+  renderMeals();
+  renderGroceries();
+};
 
 function groceryId(section,itemName){
   return btoa(unescape(encodeURIComponent(section+"|"+itemName))).replace(/=/g,"");
@@ -328,15 +586,61 @@ function renderGroceries(){
   oneBtn.classList.toggle("active", people === 1);
   twoBtn.classList.toggle("active", people === 2);
 
+  const active = profile();
+  const profilesForShopping = people === 1
+    ? [active]
+    : [state.profiles.p1, state.profiles.p2];
+
   document.getElementById("grocerySummary").textContent =
     people === 1
-      ? "Estimated quantities for 1 person for the full 7-day Plan A menu."
-      : "Estimated quantities for 2 people for the full 7-day Plan A menu.";
+      ? `Estimated quantities for ${active.name}'s full 7-day menu, including saved food swaps.`
+      : `Estimated combined quantities for both profiles' full 7-day menus, including saved food swaps.`;
 
   const list=document.getElementById("groceryList");
   list.innerHTML="";
 
+  const proteinTotals = {};
+  profilesForShopping.forEach(pstate=>{
+    const counts = collectProteinMealCounts(pstate);
+    Object.entries(counts).forEach(([name,count])=>{
+      proteinTotals[name] = (proteinTotals[name] || 0) + count;
+    });
+  });
+
+  const proteinSec=document.createElement("div");
+  proteinSec.className="grocery-section";
+  proteinSec.innerHTML=`<h3>Proteins</h3>`;
+
+  Object.entries(proteinTotals)
+    .sort((a,b)=>a[0].localeCompare(b[0]))
+    .forEach(([name,count])=>{
+      const qty = formatProteinQty(name,count);
+      const id = groceryId("Proteins",name);
+      const checked = !!state.groceries[id];
+
+      const row=document.createElement("label");
+      row.className="grocery-item"+(checked?" checked":"");
+      row.innerHTML=`
+        <div class="grocery-item-main">
+          <input type="checkbox" ${checked?"checked":""}>
+          <span>${name}</span>
+        </div>
+        <span class="qty-badge">${qty}</span>`;
+
+      row.querySelector("input").onchange=e=>{
+        state.groceries[id]=e.target.checked;
+        save();
+        renderGroceries();
+      };
+
+      proteinSec.appendChild(row);
+    });
+
+  list.appendChild(proteinSec);
+
   Object.entries(groceries).forEach(([section,items])=>{
+    if(section === "Proteins") return;
+
     const sec=document.createElement("div");
     sec.className="grocery-section";
     sec.innerHTML=`<h3>${section}</h3>`;
@@ -366,9 +670,6 @@ function renderGroceries(){
     list.appendChild(sec);
   });
 }
-
-document.getElementById("onePersonBtn").onclick=()=>setGroceryPeople(1);
-document.getElementById("twoPeopleBtn").onclick=()=>setGroceryPeople(2);
 
 document.getElementById("clearGroceries").onclick=()=>{
   state.groceries={};
