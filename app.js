@@ -106,14 +106,15 @@ const groceries = {
 };
 
 
-const key = "myPortionPlanner_v3";
+const key = "myPortionPlanner_v4";
 
 function freshProfile(name){
   return {
     name,
     date:new Date().toDateString(),
     portions:{},
-    weights:[{date:new Date().toISOString(),weight:141}],
+    startWeight:null,
+    weights:[],
     goal:null,
     selectedDay:1
   };
@@ -125,22 +126,27 @@ let state;
 if(stored && stored.profiles){
   state = stored;
 } else {
-  // Migrate from v2 first, then v1 if needed.
+  // Migrate from v3, then v2, then v1.
+  const v3 = JSON.parse(localStorage.getItem("myPortionPlanner_v3") || "null");
   const v2 = JSON.parse(localStorage.getItem("myPortionPlanner_v2") || "null");
-  if(v2 && v2.profiles){
+  const v1 = JSON.parse(localStorage.getItem("myPortionPlanner_v1") || "null");
+
+  if(v3 && v3.profiles){
+    state = v3;
+  } else if(v2 && v2.profiles){
     state = {
       ...v2,
       groceryPeople: v2.groceryPeople || 1
     };
   } else {
-    const old = JSON.parse(localStorage.getItem("myPortionPlanner_v1") || "null");
     const p1 = freshProfile("Me");
-    if(old){
-      p1.date = old.date || p1.date;
-      p1.portions = old.portions || {};
-      p1.weights = old.weights || p1.weights;
-      p1.goal = old.goal ?? null;
-      p1.selectedDay = old.selectedDay || 1;
+    if(v1){
+      p1.date = v1.date || p1.date;
+      p1.portions = v1.portions || {};
+      p1.weights = Array.isArray(v1.weights) ? v1.weights : [];
+      p1.startWeight = p1.weights[0]?.weight ?? 141;
+      p1.goal = v1.goal ?? null;
+      p1.selectedDay = v1.selectedDay || 1;
     }
     state = {
       activeProfile:"p1",
@@ -148,11 +154,24 @@ if(stored && stored.profiles){
         p1:p1,
         p2:freshProfile("Wife")
       },
-      groceries: old?.groceries || {},
-      groceryPeople: 1
+      groceries:v1?.groceries || {},
+      groceryPeople:1
     };
   }
 }
+
+// Normalize profile data for Version 4.
+Object.values(state.profiles).forEach(p=>{
+  if(!Array.isArray(p.weights)) p.weights = [];
+  if(p.startWeight === undefined || p.startWeight === null){
+    p.startWeight = p.weights[0]?.weight ?? null;
+  }
+  // Remove the old automatically seeded 141 entry when it is the only entry.
+  // Starting weight is now stored separately and history is only real weigh-ins.
+  if(p.weights.length === 1 && Number(p.weights[0]?.weight) === Number(p.startWeight)){
+    p.weights = [];
+  }
+});
 
 if(!state.groceryPeople) state.groceryPeople = 1;
 
@@ -351,30 +370,89 @@ document.getElementById("clearGroceries").onclick=()=>{
 
 function renderWeight(){
   const pstate = profile();
-  const weights=pstate.weights.slice().sort((a,b)=>new Date(a.date)-new Date(b.date));
-  const start=weights[0]?.weight ?? 141;
-  const latest=weights.at(-1)?.weight ?? start;
+  const weights = pstate.weights
+    .slice()
+    .sort((a,b)=>new Date(a.date)-new Date(b.date));
 
-  document.getElementById("startWeight").textContent=`${start.toFixed(1)} lb`;
-  document.getElementById("latestWeight").textContent=`${latest.toFixed(1)} lb`;
-  document.getElementById("weightChange").textContent=`${(latest-start>=0?"+":"")+(latest-start).toFixed(1)} lb`;
+  const start = Number(pstate.startWeight);
+  const hasStart = Number.isFinite(start) && start > 0;
+  const latestEntry = weights.at(-1);
+  const latest = latestEntry ? Number(latestEntry.weight) : (hasStart ? start : null);
+
+  document.getElementById("startWeight").textContent =
+    hasStart ? `${start.toFixed(1)} lb` : "Not set";
+
+  document.getElementById("latestWeight").textContent =
+    latest !== null && Number.isFinite(latest) ? `${latest.toFixed(1)} lb` : "—";
+
+  if(hasStart && latest !== null && Number.isFinite(latest)){
+    const change = latest - start;
+    document.getElementById("weightChange").textContent =
+      `${change >= 0 ? "+" : ""}${change.toFixed(1)} lb`;
+  } else {
+    document.getElementById("weightChange").textContent = "—";
+  }
+
+  const startInput = document.getElementById("startWeightInput");
+  startInput.value = hasStart ? start.toFixed(1) : "";
 
   const hist=document.getElementById("weightHistory");
   hist.innerHTML="";
-  [...weights].reverse().forEach(w=>{
+
+  if(weights.length === 0){
+    hist.innerHTML = `<div class="empty-history">No weigh-ins yet.</div>`;
+    return;
+  }
+
+  [...weights].reverse().forEach(entry=>{
     const row=document.createElement("div");
     row.className="history-row";
-    row.innerHTML=`<span>${new Date(w.date).toLocaleDateString()}</span><strong>${Number(w.weight).toFixed(1)} lb</strong>`;
+    row.innerHTML=`
+      <div class="history-main">
+        <span>${new Date(entry.date).toLocaleDateString()}</span>
+        <strong>${Number(entry.weight).toFixed(1)} lb</strong>
+      </div>
+      <button class="delete-weight" type="button">Delete</button>`;
+
+    row.querySelector(".delete-weight").onclick=()=>{
+      const ok = confirm(`Delete the ${Number(entry.weight).toFixed(1)} lb entry from ${new Date(entry.date).toLocaleDateString()}?`);
+      if(!ok) return;
+      const index = pstate.weights.findIndex(w=>w.date===entry.date && Number(w.weight)===Number(entry.weight));
+      if(index >= 0){
+        pstate.weights.splice(index,1);
+        save();
+        renderWeight();
+        renderSettings();
+      }
+    };
+
     hist.appendChild(row);
   });
 }
 
-document.getElementById("addWeight").onclick=()=>{
-  const v=Number(document.getElementById("weightInput").value);
+document.getElementById("saveStartWeight").onclick=()=>{
+  const v=Number(document.getElementById("startWeightInput").value);
   if(v>0){
-    profile().weights.push({date:new Date().toISOString(),weight:v});
+    profile().startWeight=v;
     save();
     renderWeight();
+    renderSettings();
+  }
+};
+
+document.getElementById("addWeight").onclick=()=>{
+  const input = document.getElementById("weightInput");
+  const v=Number(input.value);
+  if(v>0){
+    profile().weights.push({
+      id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random()),
+      date:new Date().toISOString(),
+      weight:v
+    });
+    input.value="";
+    save();
+    renderWeight();
+    renderSettings();
   }
 };
 
@@ -387,6 +465,10 @@ function renderSettings(){
 
   document.getElementById("profile1Name").value = state.profiles.p1.name || "";
   document.getElementById("profile2Name").value = state.profiles.p2.name || "";
+
+  const start = Number(pstate.startWeight);
+  document.getElementById("settingsStartWeight").textContent =
+    Number.isFinite(start) && start > 0 ? `${start.toFixed(1)} lb` : "Not set";
 }
 
 document.getElementById("saveGoal").onclick=()=>{

@@ -84,23 +84,38 @@
         <div class="card">
           <h2>Weight Tracker</h2>
           <div class="stats">
-            <div><span>Start</span><strong id="startWeight">141.0 lb</strong></div>
-            <div><span>Latest</span><strong id="latestWeight">141.0 lb</strong></div>
-            <div><span>Change</span><strong id="weightChange">0.0 lb</strong></div>
+            <div><span>Starting</span><strong id="startWeight">—</strong></div>
+            <div><span>Latest</span><strong id="latestWeight">—</strong></div>
+            <div><span>Change</span><strong id="weightChange">—</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Starting weight</h3>
+          <p class="muted">Set this once for the selected profile. You can change it later.</p>
+          <div class="input-row">
+            <input id="startWeightInput" inputmode="decimal" type="number" step="0.1" min="50" max="500" placeholder="Example: 141" />
+            <span>lb</span>
+            <button id="saveStartWeight" class="primary">Save</button>
           </div>
         </div>
 
         <div class="card">
           <h3>Add today's weight</h3>
           <div class="input-row">
-            <input id="weightInput" inputmode="decimal" type="number" step="0.1" min="50" max="500" value="141" />
+            <input id="weightInput" inputmode="decimal" type="number" step="0.1" min="50" max="500" placeholder="Today's weight" />
             <span>lb</span>
             <button id="addWeight" class="primary">Add</button>
           </div>
         </div>
 
         <div class="card">
-          <h3>History</h3>
+          <div class="section-head">
+            <div>
+              <h3>History</h3>
+              <p class="muted">Delete any entry you do not want to keep.</p>
+            </div>
+          </div>
           <div id="weightHistory"></div>
         </div>
       </section>
@@ -126,7 +141,7 @@
           <h2>Your Plan</h2>
           <div class="settings-list">
             <div><span>Plan</span><strong>A</strong></div>
-            <div><span>Starting weight</span><strong>141 lb</strong></div>
+            <div><span>Starting weight</span><strong id="settingsStartWeight">Not set</strong></div>
             <div><span>Goal</span><strong>Weight loss</strong></div>
           </div>
         </div>
