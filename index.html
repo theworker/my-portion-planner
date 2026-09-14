@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#6f8f2f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Portion Planner" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icon.svg" />
+  <link rel="icon" href="icon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="styles.css" />
+  <title>My Portion Planner</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">PLAN A</div>
+        <h1>My Portion Planner</h1>
+        <p class="sub">141 lb starting weight • weight-loss plan</p>
+      </div>
+      <button id="installBtn" class="ghost hidden">Install App</button>
+    </header>
+
+    <main>
+      <section id="today" class="page active">
+        <div class="card hero">
+          <div>
+            <h2>Today</h2>
+            <p id="dateLabel"></p>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-track"><div id="overallProgress" class="progress-bar"></div></div>
+            <div id="overallText" class="progress-text"></div>
+          </div>
+        </div>
+
+        <div id="portionGrid" class="portion-grid"></div>
+
+        <div class="row-gap">
+          <button id="resetToday" class="secondary danger">Reset Today</button>
+        </div>
+      </section>
+
+      <section id="meals" class="page">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>7-Day Meal Plan</h2>
+              <p>Each day totals your Plan A targets.</p>
+            </div>
+          </div>
+          <div id="dayTabs" class="day-tabs"></div>
+        </div>
+        <div id="mealList"></div>
+      </section>
+
+      <section id="groceries" class="page">
+        <div class="card">
+          <div class="section-head">
+            <div>
+              <h2>Grocery List</h2>
+              <p>Tap items as you shop.</p>
+            </div>
+            <button id="clearGroceries" class="ghost">Clear</button>
+          </div>
+        </div>
+        <div id="groceryList"></div>
+      </section>
+
+      <section id="weight" class="page">
+        <div class="card">
+          <h2>Weight Tracker</h2>
+          <div class="stats">
+            <div><span>Start</span><strong id="startWeight">141.0 lb</strong></div>
+            <div><span>Latest</span><strong id="latestWeight">141.0 lb</strong></div>
+            <div><span>Change</span><strong id="weightChange">0.0 lb</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Add today's weight</h3>
+          <div class="input-row">
+            <input id="weightInput" inputmode="decimal" type="number" step="0.1" min="50" max="500" value="141" />
+            <span>lb</span>
+            <button id="addWeight" class="primary">Add</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>History</h3>
+          <div id="weightHistory"></div>
+        </div>
+      </section>
+
+      <section id="settings" class="page">
+        <div class="card">
+          <h2>Your Plan</h2>
+          <div class="settings-list">
+            <div><span>Plan</span><strong>A</strong></div>
+            <div><span>Starting weight</span><strong>141 lb</strong></div>
+            <div><span>Goal</span><strong>Weight loss</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>Optional goal weight</h3>
+          <div class="input-row">
+            <input id="goalInput" inputmode="decimal" type="number" step="0.1" min="50" max="500" placeholder="Example: 135" />
+            <span>lb</span>
+            <button id="saveGoal" class="primary">Save</button>
+          </div>
+          <p id="goalSaved" class="muted"></p>
+        </div>
+
+        <div class="card note">
+          <strong>About this app</strong>
+          <p>This is a personal, unofficial planner based on your current Portion Fix Plan A targets. It is not affiliated with or endorsed by BODi.</p>
+          <p>Nutrition needs can change with activity level, medical conditions, medications, pregnancy, or other factors.</p>
+        </div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav">
+      <button data-page="today" class="nav-btn active"><span>✓</span><small>Today</small></button>
+      <button data-page="meals" class="nav-btn"><span>🍴</span><small>Meals</small></button>
+      <button data-page="groceries" class="nav-btn"><span>🛒</span><small>Groceries</small></button>
+      <button data-page="weight" class="nav-btn"><span>📈</span><small>Weight</small></button>
+      <button data-page="settings" class="nav-btn"><span>⚙️</span><small>Settings</small></button>
+    </nav>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
