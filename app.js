@@ -106,7 +106,7 @@ const groceries = {
 };
 
 
-const key = "myPortionPlanner_v4";
+const key = "myPortionPlanner_v5";
 
 function freshProfile(name){
   return {
@@ -126,12 +126,15 @@ let state;
 if(stored && stored.profiles){
   state = stored;
 } else {
-  // Migrate from v3, then v2, then v1.
+  // Migrate from v4, then v3, v2, then v1.
+  const v4 = JSON.parse(localStorage.getItem("myPortionPlanner_v4") || "null");
   const v3 = JSON.parse(localStorage.getItem("myPortionPlanner_v3") || "null");
   const v2 = JSON.parse(localStorage.getItem("myPortionPlanner_v2") || "null");
   const v1 = JSON.parse(localStorage.getItem("myPortionPlanner_v1") || "null");
 
-  if(v3 && v3.profiles){
+  if(v4 && v4.profiles){
+    state = v4;
+  } else if(v3 && v3.profiles){
     state = v3;
   } else if(v2 && v2.profiles){
     state = {
@@ -160,17 +163,10 @@ if(stored && stored.profiles){
   }
 }
 
-// Normalize profile data for Version 4.
+// Normalize profile data.
 Object.values(state.profiles).forEach(p=>{
   if(!Array.isArray(p.weights)) p.weights = [];
-  if(p.startWeight === undefined || p.startWeight === null){
-    p.startWeight = p.weights[0]?.weight ?? null;
-  }
-  // Remove the old automatically seeded 141 entry when it is the only entry.
-  // Starting weight is now stored separately and history is only real weigh-ins.
-  if(p.weights.length === 1 && Number(p.weights[0]?.weight) === Number(p.startWeight)){
-    p.weights = [];
-  }
+  if(p.startWeight === undefined) p.startWeight = null;
 });
 
 if(!state.groceryPeople) state.groceryPeople = 1;
@@ -185,6 +181,18 @@ function resetIfNewDay(){
     p.date=today;
     p.portions={};
     save();
+  }
+}
+
+function renderHeaderProfileSummary(){
+  const pstate = profile();
+  const start = Number(pstate.startWeight);
+  const el = document.getElementById("headerProfileSummary");
+
+  if(Number.isFinite(start) && start > 0){
+    el.textContent = `${start.toFixed(1)} lb starting weight • weight-loss plan`;
+  } else {
+    el.textContent = "Starting weight not set • weight-loss plan";
   }
 }
 
@@ -435,6 +443,7 @@ document.getElementById("saveStartWeight").onclick=()=>{
   if(v>0){
     profile().startWeight=v;
     save();
+    renderHeaderProfileSummary();
     renderWeight();
     renderSettings();
   }
@@ -507,6 +516,7 @@ if("serviceWorker" in navigator){
 
 function renderAll(){
   renderProfileSelector();
+  renderHeaderProfileSummary();
   renderToday();
   renderMeals();
   renderGroceries();
